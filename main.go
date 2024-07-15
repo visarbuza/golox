@@ -56,14 +56,29 @@ func runPrompt() error {
 
 func run(source string) {
 	scanner := NewScanner(source)
+	parser := NewParser(scanner.ScanTokens())
 
-	for _, token := range scanner.ScanTokens() {
-		fmt.Println(token)
+	expressions := parser.Parse()
+
+	if hadError {
+		return
 	}
+
+	astPrinter := &AstPrinter{}
+
+	fmt.Println(astPrinter.Print(expressions))
 }
 
 func err(line int, message string) {
 	report(line, "", message)
+}
+
+func errLox(token Token, message string) {
+	if token.Type == EOF {
+		report(token.Line, " at end", message)
+	} else {
+		report(token.Line, fmt.Sprintf(" at '%s'", token.Lexeme), message)
+	}
 }
 
 func report(line int, where, message string) {
