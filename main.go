@@ -9,11 +9,12 @@ import (
 var hadError = false
 
 func main() {
-	if len(os.Args) > 2 {
+	args := os.Args[1:]
+	if len(args) > 1 {
 		fmt.Println("Usage: golox[script]")
 		os.Exit(64)
-	} else if len(os.Args) == 2 {
-		runFile(os.Args[1])
+	} else if len(args) == 1 {
+		runFile(args[0])
 	} else {
 		runPrompt()
 	}

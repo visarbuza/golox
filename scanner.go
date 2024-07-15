@@ -50,6 +50,7 @@ func (s *Scanner) isAtEnd() bool {
 func (s *Scanner) scanToken() {
 	r := s.advance()
 	switch r {
+	// Symbols
 	case '(':
 		s.addToken(LEFT_PAREN)
 	case ')':
@@ -71,29 +72,13 @@ func (s *Scanner) scanToken() {
 	case '*':
 		s.addToken(STAR)
 	case '!':
-		if s.match('=') {
-			s.addToken(BANG_EQUAL)
-		} else {
-			s.addToken(BANG)
-		}
+		s.addTokenConditional('=', BANG_EQUAL, BANG)
 	case '=':
-		if s.match('=') {
-			s.addToken(EQUAL_EQUAL)
-		} else {
-			s.addToken(EQUAL)
-		}
+		s.addTokenConditional('=', EQUAL_EQUAL, EQUAL)
 	case '<':
-		if s.match('=') {
-			s.addToken(LESS_EQUAL)
-		} else {
-			s.addToken(LESS)
-		}
+		s.addTokenConditional('=', LESS_EQUAL, LESS)
 	case '>':
-		if s.match('=') {
-			s.addToken(GREATER_EQUAL)
-		} else {
-			s.addToken(GREATER)
-		}
+		s.addTokenConditional('=', GREATER_EQUAL, GREATER)
 	case '/':
 		if s.match('/') {
 			for s.peek() != '\n' && !s.isAtEnd() {
@@ -102,10 +87,14 @@ func (s *Scanner) scanToken() {
 		} else {
 			s.addToken(SLASH)
 		}
+
+	// Ignore whitespace
 	case ' ', '\r', '\t':
 		break
 	case '\n':
 		s.line++
+
+	// Literals
 	case '"':
 		s.string()
 	default:
@@ -126,6 +115,14 @@ func (s *Scanner) advance() rune {
 
 func (s *Scanner) addToken(t TokenType) {
 	s.addTokenLiteral(t, nil)
+}
+
+func (s *Scanner) addTokenConditional(expected rune, matchType, elseType TokenType) {
+	if s.match(expected) {
+		s.addToken(matchType)
+	} else {
+		s.addToken(elseType)
+	}
 }
 
 func (s *Scanner) addTokenLiteral(t TokenType, literal interface{}) {
