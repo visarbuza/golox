@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-var errParsing = fmt.Errorf("error parsing")
+var errParsing = fmt.Errorf("parsing error")
 
 type Parser struct {
 	tokens  []Token
