@@ -7,6 +7,8 @@ import (
 )
 
 var hadError = false
+var hadRuntimeError = false
+var interpreter = &Interpreter{}
 
 func main() {
 	args := os.Args[1:]
@@ -28,6 +30,9 @@ func runFile(path string) error {
 	run(string(bytes))
 	if hadError {
 		os.Exit(65)
+	}
+	if hadRuntimeError {
+		os.Exit(70)
 	}
 	return nil
 }
@@ -69,9 +74,7 @@ func run(source string) {
 		return
 	}
 
-	astPrinter := &AstPrinter{}
-
-	fmt.Println(astPrinter.Print(expressions))
+	interpreter.Interpret(expressions)
 }
 
 func err(line int, message string) {
@@ -89,4 +92,9 @@ func errLox(token Token, message string) {
 	} else {
 		report(token.Line, fmt.Sprintf(" at '%s'", token.Lexeme), message)
 	}
+}
+
+func runtimeError(err RuntimeError) {
+	fmt.Printf("%s\n[line %d]\n", err.Message, err.Token.Line)
+	hadRuntimeError = true
 }
