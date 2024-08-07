@@ -28,9 +28,9 @@ Input file
 - Representing code
 - Parsing expressions
 - Evaluating expressions
+- Statements and state
 
 ### Next
-- Statements and state
 - Control flow
 - Functions
 - Resolving and binding

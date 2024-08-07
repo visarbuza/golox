@@ -5,6 +5,7 @@ import (
 )
 
 type Interpreter struct {
+	env *Environment
 }
 
 func (i *Interpreter) Interpret(statements []Stmt) {
@@ -23,6 +24,17 @@ func (i *Interpreter) execute(stmt Stmt) {
 	stmt.Accept(i)
 }
 
+func (i *Interpreter) executeBlock(statements []Stmt, env *Environment) {
+	prevEnv := i.env
+	i.env = env
+	defer func() {
+		i.env = prevEnv
+	}()
+	for _, stmt := range statements {
+		i.execute(stmt)
+	}
+}
+
 func (i *Interpreter) VisitExpressionStmt(stmt *ExpressionStmt) any {
 	i.evaluate(stmt.Expression)
 	return nil
@@ -39,13 +51,18 @@ func (i *Interpreter) VisitVarStmt(stmt *VarStmt) any {
 	if stmt.Initializer != nil {
 		value = i.evaluate(stmt.Initializer)
 	}
-	define(stmt.Name.Lexeme, value)
+	i.env.Define(stmt.Name.Lexeme, value)
+	return nil
+}
+
+func (i *Interpreter) VisitBlockStmt(stmt *Block) any {
+	i.executeBlock(stmt.Statements, NewEnvironment(i.env))
 	return nil
 }
 
 func (i *Interpreter) VisitAssign(expr *Assign) any {
 	value := i.evaluate(expr.Value)
-	assign(expr.Name, value)
+	i.env.Assign(expr.Name, value)
 	return value
 }
 
@@ -118,7 +135,7 @@ func (i *Interpreter) VisitUnary(expr *Unary) any {
 }
 
 func (i *Interpreter) VisitVariable(expr *Variable) any {
-	val, err := get(expr.Name)
+	val, err := i.env.Get(expr.Name)
 	if err != nil {
 		panic(err)
 	}

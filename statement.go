@@ -8,6 +8,15 @@ type StmtVisitor interface {
 	VisitPrintStmt(stmt *PrintStmt) any
 	VisitExpressionStmt(stmt *ExpressionStmt) any
 	VisitVarStmt(stmt *VarStmt) any
+	VisitBlockStmt(stmt *Block) any
+}
+
+type Block struct {
+	Statements []Stmt
+}
+
+func (b *Block) Accept(v StmtVisitor) any {
+	return v.VisitBlockStmt(b)
 }
 
 type PrintStmt struct {
