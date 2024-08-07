@@ -68,13 +68,13 @@ func run(source string) {
 	scanner := NewScanner(source)
 	parser := NewParser(scanner.ScanTokens())
 
-	expressions := parser.Parse()
+	statements := parser.Parse()
 
 	if hadError {
 		return
 	}
 
-	interpreter.Interpret(expressions)
+	interpreter.Interpret(statements)
 }
 
 func err(line int, message string) {

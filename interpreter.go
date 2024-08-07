@@ -7,15 +7,40 @@ import (
 type Interpreter struct {
 }
 
-func (i *Interpreter) Interpret(expr Expr) {
+func (i *Interpreter) Interpret(statements []Stmt) {
 	defer func() {
 		if r := recover(); r != nil {
 			val, _ := r.(RuntimeError)
 			runtimeError(val)
 		}
 	}()
-	val := i.evaluate(expr)
+	for _, stmt := range statements {
+		i.execute(stmt)
+	}
+}
+
+func (i *Interpreter) execute(stmt Stmt) {
+	stmt.Accept(i)
+}
+
+func (i *Interpreter) VisitExpressionStmt(stmt *ExpressionStmt) any {
+	i.evaluate(stmt.Expression)
+	return nil
+}
+
+func (i *Interpreter) VisitPrintStmt(stmt *PrintStmt) any {
+	val := i.evaluate(stmt.Expression)
 	fmt.Println(i.stringify(val))
+	return nil
+}
+
+func (i *Interpreter) VisitVarStmt(stmt *VarStmt) any {
+	var value any = nil
+	if stmt.Initializer != nil {
+		value = i.evaluate(stmt.Initializer)
+	}
+	define(stmt.Name.Lexeme, value)
+	return nil
 }
 
 func (i *Interpreter) VisitBinary(expr *Binary) any {
@@ -84,6 +109,14 @@ func (i *Interpreter) VisitUnary(expr *Unary) any {
 	}
 
 	return nil
+}
+
+func (i *Interpreter) VisitVariable(expr *Variable) any {
+	val, err := get(expr.Name)
+	if err != nil {
+		panic(err)
+	}
+	return val
 }
 
 func (i *Interpreter) evaluate(expr Expr) any {

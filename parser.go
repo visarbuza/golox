@@ -15,8 +15,54 @@ func NewParser(tokens []Token) *Parser {
 	return &Parser{tokens: tokens}
 }
 
-func (p *Parser) Parse() Expr {
-	return p.expression()
+func (p *Parser) Parse() []Stmt {
+	statements := []Stmt{}
+	for !p.isAtEnd() {
+		statements = append(statements, p.statement())
+	}
+	return statements
+}
+
+func (p *Parser) statement() Stmt {
+	if p.match(PRINT) {
+		return p.printStatement()
+	}
+	return p.expressionStatement()
+}
+
+func (p *Parser) printStatement() Stmt {
+	value := p.expression()
+	p.consume(SEMICOLON, "Expect ';' after value.")
+	return &PrintStmt{Expression: value}
+}
+
+func (p *Parser) varDeclaration() Stmt {
+	name := p.consume(IDENTIFIER, "Expect variable name.")
+	var initializer Expr
+	if p.match(EQUAL) {
+		initializer = p.expression()
+	}
+	p.consume(SEMICOLON, "Expect ';' after variable declaration.")
+	return &VarStmt{Name: name, Initializer: initializer}
+
+}
+
+func (p *Parser) expressionStatement() Stmt {
+	value := p.expression()
+	p.consume(SEMICOLON, "Expect ';' after expression.")
+	return &ExpressionStmt{Expression: value}
+}
+
+func (p *Parser) declaration() Stmt {
+	defer func() {
+		if r := recover(); r != nil {
+			p.synchronize()
+		}
+	}()
+	if p.match(VAR) {
+		return p.varDeclaration()
+	}
+	return p.statement()
 }
 
 func (p *Parser) expression() Expr {
