@@ -10,6 +10,16 @@ type ExprVisitor interface {
 	VisitLiteral(expr *Literal) any
 	VisitUnary(expr *Unary) any
 	VisitVariable(expr *Variable) any
+	VisitAssign(expr *Assign) any
+}
+
+type Assign struct {
+	Name  Token
+	Value Expr
+}
+
+func (a *Assign) Accept(ev ExprVisitor) any {
+	return ev.VisitAssign(a)
 }
 
 type Binary struct {

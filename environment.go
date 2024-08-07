@@ -14,3 +14,11 @@ func get(name Token) (any, error) {
 	}
 	return nil, &RuntimeError{Token: name, Message: fmt.Sprintf("Undefined variable %s.", name.Lexeme)}
 }
+
+func assign(name Token, value any) {
+	if _, ok := values[name.Lexeme]; ok {
+		values[name.Lexeme] = value
+		return
+	}
+	panic(&RuntimeError{Token: name, Message: fmt.Sprintf("Undefined variable %s.", name.Lexeme)})
+}

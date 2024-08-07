@@ -43,6 +43,12 @@ func (i *Interpreter) VisitVarStmt(stmt *VarStmt) any {
 	return nil
 }
 
+func (i *Interpreter) VisitAssign(expr *Assign) any {
+	value := i.evaluate(expr.Value)
+	assign(expr.Name, value)
+	return value
+}
+
 func (i *Interpreter) VisitBinary(expr *Binary) any {
 	left := i.evaluate(expr.Left)
 	right := i.evaluate(expr.Right)

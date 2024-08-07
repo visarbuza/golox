@@ -18,7 +18,7 @@ func NewParser(tokens []Token) *Parser {
 func (p *Parser) Parse() []Stmt {
 	statements := []Stmt{}
 	for !p.isAtEnd() {
-		statements = append(statements, p.statement())
+		statements = append(statements, p.declaration())
 	}
 	return statements
 }
@@ -36,23 +36,6 @@ func (p *Parser) printStatement() Stmt {
 	return &PrintStmt{Expression: value}
 }
 
-func (p *Parser) varDeclaration() Stmt {
-	name := p.consume(IDENTIFIER, "Expect variable name.")
-	var initializer Expr
-	if p.match(EQUAL) {
-		initializer = p.expression()
-	}
-	p.consume(SEMICOLON, "Expect ';' after variable declaration.")
-	return &VarStmt{Name: name, Initializer: initializer}
-
-}
-
-func (p *Parser) expressionStatement() Stmt {
-	value := p.expression()
-	p.consume(SEMICOLON, "Expect ';' after expression.")
-	return &ExpressionStmt{Expression: value}
-}
-
 func (p *Parser) declaration() Stmt {
 	defer func() {
 		if r := recover(); r != nil {
@@ -65,8 +48,42 @@ func (p *Parser) declaration() Stmt {
 	return p.statement()
 }
 
+func (p *Parser) varDeclaration() Stmt {
+	name := p.consume(IDENTIFIER, "Expect variable name.")
+	var initializer Expr
+	if p.match(EQUAL) {
+		initializer = p.expression()
+	}
+	p.consume(SEMICOLON, "Expect ';' after variable declaration.")
+	return &VarStmt{Name: name, Initializer: initializer}
+}
+
+func (p *Parser) expressionStatement() Stmt {
+	value := p.expression()
+	p.consume(SEMICOLON, "Expect ';' after expression.")
+	return &ExpressionStmt{Expression: value}
+}
+
+func (p *Parser) assignment() Expr {
+	expr := p.equality()
+
+	if p.match(EQUAL) {
+		equals := p.previous()
+		value := p.assignment()
+
+		if variable, ok := expr.(*Variable); ok {
+			name := variable.Name
+			return &Assign{Name: name, Value: value}
+		}
+
+		errLox(equals, "Invalid assignment target.")
+	}
+
+	return expr
+}
+
 func (p *Parser) expression() Expr {
-	return p.equality()
+	return p.assignment()
 }
 
 func (p *Parser) equality() Expr {
@@ -137,11 +154,12 @@ func (p *Parser) primary() Expr {
 	if p.match(NIL) {
 		return &Literal{Value: nil}
 	}
-
 	if p.match(NUMBER, STRING) {
 		return &Literal{Value: p.previous().Literal}
 	}
-
+	if p.match(IDENTIFIER) {
+		return &Variable{Name: p.previous()}
+	}
 	if p.match(LEFT_PAREN) {
 		expr := p.expression()
 		p.consume(RIGHT_PAREN, "Expect ')' after expression.")
