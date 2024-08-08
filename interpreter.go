@@ -20,29 +20,14 @@ func (i *Interpreter) Interpret(statements []Stmt) {
 	}
 }
 
-func (i *Interpreter) execute(stmt Stmt) {
-	stmt.Accept(i)
-}
-
-func (i *Interpreter) executeBlock(statements []Stmt, env *Environment) {
-	prevEnv := i.env
-	i.env = env
-	defer func() {
-		i.env = prevEnv
-	}()
-	for _, stmt := range statements {
-		i.execute(stmt)
-	}
+func (i *Interpreter) VisitPrintStmt(stmt *PrintStmt) any {
+	val := i.evaluate(stmt.Expression)
+	fmt.Println(i.stringify(val))
+	return nil
 }
 
 func (i *Interpreter) VisitExpressionStmt(stmt *ExpressionStmt) any {
 	i.evaluate(stmt.Expression)
-	return nil
-}
-
-func (i *Interpreter) VisitPrintStmt(stmt *PrintStmt) any {
-	val := i.evaluate(stmt.Expression)
-	fmt.Println(i.stringify(val))
 	return nil
 }
 
@@ -60,13 +45,7 @@ func (i *Interpreter) VisitBlockStmt(stmt *Block) any {
 	return nil
 }
 
-func (i *Interpreter) VisitAssign(expr *Assign) any {
-	value := i.evaluate(expr.Value)
-	i.env.Assign(expr.Name, value)
-	return value
-}
-
-func (i *Interpreter) VisitBinary(expr *Binary) any {
+func (i *Interpreter) VisitBinaryExpr(expr *Binary) any {
 	left := i.evaluate(expr.Left)
 	right := i.evaluate(expr.Right)
 
@@ -112,15 +91,15 @@ func (i *Interpreter) VisitBinary(expr *Binary) any {
 	return nil
 }
 
-func (i *Interpreter) VisitGrouping(expr *Grouping) any {
+func (i *Interpreter) VisitGroupingExpr(expr *Grouping) any {
 	return i.evaluate(expr.Expression)
 }
 
-func (i *Interpreter) VisitLiteral(expr *Literal) any {
+func (i *Interpreter) VisitLiteralExpr(expr *Literal) any {
 	return expr.Value
 }
 
-func (i *Interpreter) VisitUnary(expr *Unary) any {
+func (i *Interpreter) VisitUnaryExpr(expr *Unary) any {
 	right := i.evaluate(expr.Right)
 
 	switch expr.Operator.Type {
@@ -134,12 +113,33 @@ func (i *Interpreter) VisitUnary(expr *Unary) any {
 	return nil
 }
 
-func (i *Interpreter) VisitVariable(expr *Variable) any {
+func (i *Interpreter) VisitVariableExpr(expr *Variable) any {
 	val, err := i.env.Get(expr.Name)
 	if err != nil {
 		panic(err)
 	}
 	return val
+}
+
+func (i *Interpreter) VisitAssignExpr(expr *Assign) any {
+	value := i.evaluate(expr.Value)
+	i.env.Assign(expr.Name, value)
+	return value
+}
+
+func (i *Interpreter) execute(stmt Stmt) {
+	stmt.Accept(i)
+}
+
+func (i *Interpreter) executeBlock(statements []Stmt, env *Environment) {
+	prevEnv := i.env
+	i.env = env
+	defer func() {
+		i.env = prevEnv
+	}()
+	for _, stmt := range statements {
+		i.execute(stmt)
+	}
 }
 
 func (i *Interpreter) evaluate(expr Expr) any {
