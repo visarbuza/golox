@@ -29,9 +29,9 @@ Input file
 - Parsing expressions
 - Evaluating expressions
 - Statements and state
+- Control flow
 
 ### Next
-- Control flow
 - Functions
 - Resolving and binding
 - Classes

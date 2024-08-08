@@ -24,8 +24,17 @@ func (p *Parser) Parse() []Stmt {
 }
 
 func (p *Parser) statement() Stmt {
+	if p.match(FOR) {
+		return p.forStatement()
+	}
+	if p.match(IF) {
+		return p.ifStatement()
+	}
 	if p.match(PRINT) {
 		return p.printStatement()
+	}
+	if p.match(WHILE) {
+		return p.whileStatement()
 	}
 	if p.match(LEFT_BRACE) {
 		return &Block{Statements: p.block()}
@@ -37,6 +46,70 @@ func (p *Parser) printStatement() Stmt {
 	value := p.expression()
 	p.consume(SEMICOLON, "Expect ';' after value.")
 	return &PrintStmt{Expression: value}
+}
+
+func (p *Parser) ifStatement() Stmt {
+	p.consume(LEFT_PAREN, "Expect '(' after 'if'.")
+	condition := p.expression()
+	p.consume(RIGHT_PAREN, "Expect ')' after if condition.")
+
+	thenBranch := p.statement()
+	var elseBranch Stmt
+	if p.match(ELSE) {
+		elseBranch = p.statement()
+	}
+
+	return &IfStmt{Condition: condition, ThenBranch: thenBranch, ElseBranch: elseBranch}
+}
+
+func (p *Parser) whileStatement() Stmt {
+	p.consume(LEFT_PAREN, "Expect '(' after 'while'.")
+	condition := p.expression()
+	p.consume(RIGHT_PAREN, "Expect ')' after while condition.")
+	body := p.statement()
+	return &WhileStmt{Condition: condition, Body: body}
+}
+
+func (p *Parser) forStatement() Stmt {
+	p.consume(LEFT_PAREN, "Expect '(' after 'for'.")
+
+	var initializer Stmt
+	if p.match(SEMICOLON) {
+		initializer = nil
+	} else if p.match(VAR) {
+		initializer = p.varDeclaration()
+	} else {
+		initializer = p.expressionStatement()
+	}
+
+	var condition Expr
+	if !p.check(SEMICOLON) {
+		condition = p.expression()
+	}
+	p.consume(SEMICOLON, "Expect ';' after loop condition.")
+
+	var increment Expr
+	if !p.check(RIGHT_PAREN) {
+		increment = p.expression()
+	}
+	p.consume(RIGHT_PAREN, "Expect ')' after for clauses.")
+
+	body := p.statement()
+
+	if increment != nil {
+		body = &Block{Statements: []Stmt{body, &ExpressionStmt{Expression: increment}}}
+	}
+
+	if condition == nil {
+		condition = &Literal{Value: true}
+	}
+	body = &WhileStmt{Condition: condition, Body: body}
+
+	if initializer != nil {
+		body = &Block{Statements: []Stmt{initializer, body}}
+	}
+
+	return body
 }
 
 func (p *Parser) declaration() Stmt {
@@ -77,7 +150,7 @@ func (p *Parser) block() []Stmt {
 }
 
 func (p *Parser) assignment() Expr {
-	expr := p.equality()
+	expr := p.or()
 
 	if p.match(EQUAL) {
 		equals := p.previous()
@@ -89,6 +162,30 @@ func (p *Parser) assignment() Expr {
 		}
 
 		errLox(equals, "Invalid assignment target.")
+	}
+
+	return expr
+}
+
+func (p *Parser) or() Expr {
+	expr := p.and()
+
+	for p.match(OR) {
+		operator := p.previous()
+		right := p.and()
+		expr = &Logical{Left: expr, Operator: operator, Right: right}
+	}
+
+	return expr
+}
+
+func (p *Parser) and() Expr {
+	expr := p.equality()
+
+	for p.match(AND) {
+		operator := p.previous()
+		right := p.equality()
+		expr = &Logical{Left: expr, Operator: operator, Right: right}
 	}
 
 	return expr

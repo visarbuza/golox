@@ -161,3 +161,7 @@ fabric.properties
 ### Ignore builds
 ./golox
 golox
+
+
+### Ignore .idea
+.idea

@@ -45,6 +45,22 @@ func (i *Interpreter) VisitBlockStmt(stmt *Block) any {
 	return nil
 }
 
+func (i *Interpreter) VisitIfStmt(stmt *IfStmt) any {
+	if i.isTruthy(i.evaluate(stmt.Condition)) {
+		i.execute(stmt.ThenBranch)
+	} else if stmt.ElseBranch != nil {
+		i.execute(stmt.ElseBranch)
+	}
+	return nil
+}
+
+func (i *Interpreter) VisitWhileStmt(stmt *WhileStmt) any {
+	for i.isTruthy(i.evaluate(stmt.Condition)) {
+		i.execute(stmt.Body)
+	}
+	return nil
+}
+
 func (i *Interpreter) VisitBinaryExpr(expr *Binary) any {
 	left := i.evaluate(expr.Left)
 	right := i.evaluate(expr.Right)
@@ -127,6 +143,21 @@ func (i *Interpreter) VisitAssignExpr(expr *Assign) any {
 	return value
 }
 
+func (i *Interpreter) VisitLogicalExpr(expr *Logical) any {
+	left := i.evaluate(expr.Left)
+
+	if expr.Operator.Type == OR {
+		if i.isTruthy(left) {
+			return left
+		}
+	} else {
+		if !i.isTruthy(left) {
+			return left
+		}
+	}
+	return i.evaluate(expr.Right)
+}
+
 func (i *Interpreter) execute(stmt Stmt) {
 	stmt.Accept(i)
 }
@@ -154,7 +185,7 @@ func (i *Interpreter) isTruthy(value any) bool {
 	if ok {
 		return val
 	}
-	return true
+	return false
 }
 
 func (i *Interpreter) isEqual(a, b any) bool {
