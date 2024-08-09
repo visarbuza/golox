@@ -7,8 +7,9 @@ import (
 var errParsing = fmt.Errorf("parsing error")
 
 type Parser struct {
-	tokens  []Token
-	current int
+	tokens    []Token
+	current   int
+	loopDepth int
 }
 
 func NewParser(tokens []Token) *Parser {
@@ -35,6 +36,9 @@ func (p *Parser) statement() Stmt {
 	}
 	if p.match(WHILE) {
 		return p.whileStatement()
+	}
+	if p.match(BREAK) {
+		return p.breakStatement()
 	}
 	if p.match(LEFT_BRACE) {
 		return &Block{Statements: p.block()}
@@ -66,7 +70,9 @@ func (p *Parser) whileStatement() Stmt {
 	p.consume(LEFT_PAREN, "Expect '(' after 'while'.")
 	condition := p.expression()
 	p.consume(RIGHT_PAREN, "Expect ')' after while condition.")
+	p.loopDepth++
 	body := p.statement()
+	p.loopDepth--
 	return &WhileStmt{Condition: condition, Body: body}
 }
 
@@ -94,7 +100,9 @@ func (p *Parser) forStatement() Stmt {
 	}
 	p.consume(RIGHT_PAREN, "Expect ')' after for clauses.")
 
+	p.loopDepth++
 	body := p.statement()
+	p.loopDepth--
 
 	if increment != nil {
 		body = &Block{Statements: []Stmt{body, &ExpressionStmt{Expression: increment}}}
@@ -110,6 +118,14 @@ func (p *Parser) forStatement() Stmt {
 	}
 
 	return body
+}
+
+func (p *Parser) breakStatement() Stmt {
+	if p.loopDepth == 0 {
+		panic(p.error(p.previous(), "Cannot use 'break' outside of a loop."))
+	}
+	p.consume(SEMICOLON, "Expect ';' after 'break'.")
+	return &BreakStmt{}
 }
 
 func (p *Parser) declaration() Stmt {

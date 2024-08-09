@@ -19,6 +19,7 @@ var keywoards = map[string]TokenType{
 	"true":   TRUE,
 	"var":    VAR,
 	"while":  WHILE,
+	"break":  BREAK,
 }
 
 type Scanner struct {

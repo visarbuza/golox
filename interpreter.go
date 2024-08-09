@@ -8,6 +8,8 @@ type Interpreter struct {
 	env *Environment
 }
 
+type breakSignal struct{}
+
 func (i *Interpreter) Interpret(statements []Stmt) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -55,10 +57,25 @@ func (i *Interpreter) VisitIfStmt(stmt *IfStmt) any {
 }
 
 func (i *Interpreter) VisitWhileStmt(stmt *WhileStmt) any {
+	defer func() {
+		if r := recover(); r != nil {
+			switch r.(type) {
+			case breakSignal:
+				// Break out of the loop by catching the break signal
+				return
+			default:
+				panic(r) // Re-panic if it's not a break signal
+			}
+		}
+	}()
 	for i.isTruthy(i.evaluate(stmt.Condition)) {
 		i.execute(stmt.Body)
 	}
 	return nil
+}
+
+func (i *Interpreter) VisitBreakStmt(stmt *BreakStmt) any {
+	panic(breakSignal{})
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *Binary) any {

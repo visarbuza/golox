@@ -46,6 +46,7 @@ const (
 	TRUE   TokenType = "TRUE"
 	VAR    TokenType = "VAR"
 	WHILE  TokenType = "WHILE"
+	BREAK  TokenType = "BREAK"
 
 	EOF TokenType = "EOF"
 )
