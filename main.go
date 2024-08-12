@@ -8,7 +8,7 @@ import (
 
 var hadError = false
 var hadRuntimeError = false
-var interpreter = &Interpreter{env: NewEnvironment(nil)}
+var interpreter = NewInterpreter()
 
 func main() {
 	args := os.Args[1:]

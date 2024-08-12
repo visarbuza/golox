@@ -5,16 +5,31 @@ import (
 )
 
 type Interpreter struct {
-	env *Environment
+	globals *Environment
+	env     *Environment
+}
+
+func NewInterpreter() *Interpreter {
+	globals := NewEnvironment(nil)
+	globals.Define("clock", &Clock{})
+	return &Interpreter{globals: globals, env: globals}
 }
 
 type breakSignal struct{}
 
+type ReturnSignal struct {
+	Value any
+}
+
 func (i *Interpreter) Interpret(statements []Stmt) {
 	defer func() {
 		if r := recover(); r != nil {
-			val, _ := r.(RuntimeError)
-			runtimeError(val)
+			if val, ok := r.(*RuntimeError); ok {
+				runtimeError(*val)
+			}
+			if val, ok := r.(RuntimeError); ok {
+				runtimeError(val)
+			}
 		}
 	}()
 	for _, stmt := range statements {
@@ -76,6 +91,20 @@ func (i *Interpreter) VisitWhileStmt(stmt *WhileStmt) any {
 
 func (i *Interpreter) VisitBreakStmt(stmt *BreakStmt) any {
 	panic(breakSignal{})
+}
+
+func (i *Interpreter) VisitFunctionStmt(stmt *FunctionStmt) any {
+	fun := NewLoxFunction(stmt, i.env)
+	i.env.Define(stmt.Name.Lexeme, fun)
+	return nil
+}
+
+func (i *Interpreter) VisitReturnStmt(stmt *ReturnStmt) any {
+	var value any = nil
+	if stmt.Value != nil {
+		value = i.evaluate(stmt.Value)
+	}
+	panic(ReturnSignal{value})
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *Binary) any {
@@ -175,6 +204,23 @@ func (i *Interpreter) VisitLogicalExpr(expr *Logical) any {
 	return i.evaluate(expr.Right)
 }
 
+func (i *Interpreter) VisitCallExpr(expr *Call) any {
+	callee := i.evaluate(expr.Callee)
+
+	args := make([]any, 0)
+	for _, arg := range expr.Arguments {
+		args = append(args, i.evaluate(arg))
+	}
+
+	if fun, ok := callee.(Callable); ok {
+		if len(args) != fun.Arity() {
+			panic(RuntimeError{expr.Paren, fmt.Sprintf("Expected %d arguments but got %d", fun.Arity(), len(args))})
+		}
+		return fun.Call(i, args)
+	}
+	panic(RuntimeError{expr.Paren, "Can only call functions and classes"})
+}
+
 func (i *Interpreter) execute(stmt Stmt) {
 	stmt.Accept(i)
 }
@@ -243,6 +289,6 @@ type RuntimeError struct {
 	Message string
 }
 
-func (r RuntimeError) Error() string {
+func (r *RuntimeError) Error() string {
 	return r.Message
 }

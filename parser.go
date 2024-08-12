@@ -31,6 +31,9 @@ func (p *Parser) statement() Stmt {
 	if p.match(IF) {
 		return p.ifStatement()
 	}
+	if p.match(RETURN) {
+		return p.returnStmt()
+	}
 	if p.match(PRINT) {
 		return p.printStatement()
 	}
@@ -134,6 +137,9 @@ func (p *Parser) declaration() Stmt {
 			p.synchronize()
 		}
 	}()
+	if p.match(FUN) {
+		return p.function("function")
+	}
 	if p.match(VAR) {
 		return p.varDeclaration()
 	}
@@ -165,6 +171,16 @@ func (p *Parser) block() []Stmt {
 	return statements
 }
 
+func (p *Parser) returnStmt() Stmt {
+	keyword := p.previous()
+	var value Expr
+	if !p.check(SEMICOLON) {
+		value = p.expression()
+	}
+	p.consume(SEMICOLON, "Expect ';' after return value.")
+	return &ReturnStmt{Keyword: keyword, Value: value}
+}
+
 func (p *Parser) assignment() Expr {
 	expr := p.or()
 
@@ -181,6 +197,27 @@ func (p *Parser) assignment() Expr {
 	}
 
 	return expr
+}
+
+func (p *Parser) function(kind string) Stmt {
+	name := p.consume(IDENTIFIER, fmt.Sprintf("Expect %s name.", kind))
+	p.consume(LEFT_PAREN, fmt.Sprintf("Expect '(' after %s name.", kind))
+	parameters := []Token{}
+	if !p.check(RIGHT_PAREN) {
+		for {
+			if len(parameters) >= 255 {
+				p.error(p.peek(), "Cannot have more than 255 parameters.")
+			}
+			parameters = append(parameters, p.consume(IDENTIFIER, "Expect parameter name."))
+			if !p.match(COMMA) {
+				break
+			}
+		}
+	}
+	p.consume(RIGHT_PAREN, "Expect ')' after parameters.")
+	p.consume(LEFT_BRACE, fmt.Sprintf("Expect '{' before %s body.", kind))
+	body := p.block()
+	return &FunctionStmt{Name: name, Params: parameters, Body: body}
 }
 
 func (p *Parser) or() Expr {
@@ -266,7 +303,7 @@ func (p *Parser) unary() Expr {
 		return &Unary{Operator: operator, Right: right}
 	}
 
-	return p.primary()
+	return p.call()
 }
 
 func (p *Parser) primary() Expr {
@@ -294,6 +331,38 @@ func (p *Parser) primary() Expr {
 	panic(p.error(p.peek(), "Expect expression."))
 }
 
+func (p *Parser) call() Expr {
+	expr := p.primary()
+
+	for {
+		if p.match(LEFT_PAREN) {
+			expr = p.finishCall(expr)
+		} else {
+			break
+		}
+	}
+
+	return expr
+}
+
+func (p *Parser) finishCall(callee Expr) Expr {
+	arguments := []Expr{}
+	if !p.check(RIGHT_PAREN) {
+		for {
+			if len(arguments) >= 255 {
+				p.error(p.peek(), "Cannot have more than 255 arguments.")
+			}
+			arguments = append(arguments, p.expression())
+			if !p.match(COMMA) {
+				break
+			}
+		}
+	}
+	paren := p.consume(RIGHT_PAREN, "Expect ')' after arguments.")
+
+	return &Call{Callee: callee, Paren: paren, Arguments: arguments}
+}
+
 func (p *Parser) consume(t TokenType, message string) Token {
 	if p.check(t) {
 		return p.advance()
@@ -319,6 +388,7 @@ func (p *Parser) synchronize() {
 	}
 }
 
+// match checks if the current token is any of the given types and advances the parser if it is.
 func (p *Parser) match(types ...TokenType) bool {
 	for _, t := range types {
 		if p.check(t) {
@@ -330,6 +400,7 @@ func (p *Parser) match(types ...TokenType) bool {
 	return false
 }
 
+// check checks if the current token is of the given type.
 func (p *Parser) check(t TokenType) bool {
 	if p.isAtEnd() {
 		return false
@@ -337,6 +408,7 @@ func (p *Parser) check(t TokenType) bool {
 	return p.peek().Type == t
 }
 
+// advance advances the parser to the next token and returns the previous token.
 func (p *Parser) advance() Token {
 	if !p.isAtEnd() {
 		p.current++

@@ -12,6 +12,8 @@ type StmtVisitor interface {
 	VisitIfStmt(stmt *IfStmt) any
 	VisitWhileStmt(stmt *WhileStmt) any
 	VisitBreakStmt(stmt *BreakStmt) any
+	VisitFunctionStmt(stmt *FunctionStmt) any
+	VisitReturnStmt(stmt *ReturnStmt) any
 }
 
 type Block struct {
@@ -72,4 +74,23 @@ type BreakStmt struct {
 
 func (b *BreakStmt) Accept(v StmtVisitor) any {
 	return v.VisitBreakStmt(b)
+}
+
+type FunctionStmt struct {
+	Name   Token
+	Params []Token
+	Body   []Stmt
+}
+
+func (f *FunctionStmt) Accept(v StmtVisitor) any {
+	return v.VisitFunctionStmt(f)
+}
+
+type ReturnStmt struct {
+	Keyword Token
+	Value   Expr
+}
+
+func (r *ReturnStmt) Accept(v StmtVisitor) any {
+	return v.VisitReturnStmt(r)
 }
